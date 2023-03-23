@@ -16,4 +16,12 @@ public class HotelDelegate {
     public List<Hotel> getHotelDetails() {
         return hotelService.getHotelDetails();
     }
+
+    public Hotel findByHotelNameAndCity(String hotelName, String city) {
+        return hotelService.findByHotelNameAndCity(hotelName, city);
+    }
+
+    public String updateHotel(Hotel hotel) {
+        return hotelService.updateHotel(hotel);
+    }
 }

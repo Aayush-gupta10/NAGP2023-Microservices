@@ -6,4 +6,8 @@ import java.util.List;
 
 public interface HotelService {
     List<Hotel> getHotelDetails();
+
+    Hotel findByHotelNameAndCity(String hotelName, String city);
+
+    String updateHotel(Hotel hotel);
 }

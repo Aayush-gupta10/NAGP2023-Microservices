@@ -10,7 +10,7 @@ public class Hotel {
 
     private String hotelName;
     private String city;
-    private Integer numberOfRooms;
+    private Integer numberOfRoomsAvailable;
     private String startingPricePerNight;
     private List<Room> rooms;
 }

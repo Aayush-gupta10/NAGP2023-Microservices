@@ -5,6 +5,7 @@ import com.nagp.masterdataservice.service.FlightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
@@ -15,5 +16,13 @@ public class FlightDelegate {
 
     public List<Flight> getFlightDetails() {
         return flightService.getFlightDetails();
+    }
+
+    public Flight findByFlightNumberAndFlightDate(String flightNumber, LocalDate flightDate) {
+        return flightService.findByFlightNumberAndFlightDate(flightNumber, flightDate);
+    }
+
+    public String updateFlight(Flight flight) {
+        return flightService.updateFlight(flight);
     }
 }

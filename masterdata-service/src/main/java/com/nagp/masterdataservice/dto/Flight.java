@@ -15,4 +15,5 @@ public class Flight {
     private LocalDateTime arrivalTime;
     private FlightClass flightClass;
     private LocalDate flightDate;
+    private Integer seatAvailable;
 }
