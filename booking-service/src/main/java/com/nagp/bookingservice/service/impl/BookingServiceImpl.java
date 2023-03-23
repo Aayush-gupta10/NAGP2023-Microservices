@@ -53,6 +53,7 @@ public class BookingServiceImpl implements BookingService {
         log.info("calling master-data to update inventory");
         //update inventory
         inventory.setSeatAvailable(inventory.getSeatAvailable() - record.getNumberOfPassengers());
+        log.info("inventory{}",inventory);
         updateFlight(inventory);
         log.info("successfully updated inventory");
         //save booking
@@ -99,6 +100,7 @@ public class BookingServiceImpl implements BookingService {
         log.info("calling master-data to update inventory");
         //update inventory
         inventory.setNumberOfRoomsAvailable(inventory.getNumberOfRoomsAvailable() - record.getNumberOfRooms());
+        log.info("inventory{}",inventory);
         updateHotel(inventory);
         log.info("successfully updated inventory");
         //save booking

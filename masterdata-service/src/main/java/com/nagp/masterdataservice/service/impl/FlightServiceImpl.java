@@ -3,6 +3,7 @@ package com.nagp.masterdataservice.service.impl;
 import com.nagp.masterdataservice.dto.Flight;
 import com.nagp.masterdataservice.enums.FlightClass;
 import com.nagp.masterdataservice.service.FlightService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class FlightServiceImpl implements FlightService {
 
     private final static List<Flight> flights = new ArrayList<>();
@@ -26,6 +28,7 @@ public class FlightServiceImpl implements FlightService {
         flight.setDepartureLocation("BEK");
         flight.setArrivalTime(LocalDateTime.now().plusDays(2).plusHours(4));
         flight.setDepartureTime(LocalDateTime.now().plusDays(2).plusHours(2));
+        flight.setSeatAvailable(12);
         flights.add(flight);
     }
 
@@ -42,6 +45,7 @@ public class FlightServiceImpl implements FlightService {
 
     @Override
     public String updateFlight(Flight flight) {
+        log.info("seat{}" ,flight.getSeatAvailable());
         flights.get(0).setSeatAvailable(flight.getSeatAvailable());
         return "Flight Updated";
     }

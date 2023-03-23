@@ -6,10 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,14 +26,14 @@ public class FlightController {
     }
 
     @GetMapping("/flight")
-    public ResponseEntity<Flight> findByFlightNumberAndFlightDate(@RequestParam String flightNumber, @RequestParam LocalDate flightDate) {
+    public ResponseEntity<Flight> findByFlightNumberAndFlightDate(@RequestParam String flightNumber, @RequestParam String flightDate) {
         log.info("FlightController.getFlightDetails started");
-        Flight response = flightDelegate.findByFlightNumberAndFlightDate(flightNumber, flightDate);
+        Flight response = flightDelegate.findByFlightNumberAndFlightDate(flightNumber, LocalDate.parse(flightDate));
         return new ResponseEntity(response, HttpStatus.OK);
     }
 
     @PutMapping("/update-flight")
-    public ResponseEntity<String> updateFlight(Flight flight) {
+    public ResponseEntity<String> updateFlight(@RequestBody Flight flight) {
         log.info("FlightController.getFlightDetails started");
         String response = flightDelegate.updateFlight(flight);
         return new ResponseEntity(response, HttpStatus.OK);

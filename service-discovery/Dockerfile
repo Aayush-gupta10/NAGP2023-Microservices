@@ -1,6 +1,6 @@
 FROM openjdk:11
 
-LABEL maintainer="anushka.agarwal@nagarro.com"
+LABEL maintainer="aayush.gupta01@nagarro.com"
 
 ADD target/service-discovery-0.0.1-SNAPSHOT.jar service-discovery-0.0.1-SNAPSHOT.jar
 

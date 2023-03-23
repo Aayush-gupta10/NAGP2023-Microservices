@@ -19,10 +19,10 @@ public class BookingEventProducer {
 
     private final static Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
-    @Value("${flight.fanout.exchange")
+    @Value("${flight.fanout.exchange}")
     private String flightfanoutExchange;
 
-    @Value("${hotel.fanout.exchange")
+    @Value("${hotel.fanout.exchange}")
     private String hotelfanoutExchange;
 
     @Autowired

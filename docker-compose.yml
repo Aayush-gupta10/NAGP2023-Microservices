@@ -1,0 +1,86 @@
+version: "3"
+services:
+  jaegar:
+    container_name: jaegar
+    image: jaegertracing/all-in-one:1.7
+    ports:
+      - 5775:5775/udp
+      - 6831:6831/udp
+      - 6832:6832/udp
+      - 5778:5778
+      - 16686:16686
+      - 14268:14268
+      - 9411:9411
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  service-discovery:
+    container_name: service-discovery
+    image: aayushgup10/service-discovery:latest
+    ports:
+      - "8761:8761"
+    environment:
+      - jaegar=jaegar
+
+  api-gateway:
+    container_name: api-gateway
+    image: aayushgup10/api-gateway:v1
+    ports:
+      - "9998:9998"
+    links:
+      - service-discovery:service-discovery
+    environment:
+      - EUREKA_URI=http://service-discovery:8761/eureka
+      - jaegar=jaegar
+
+  masterdata-service:
+    container_name: masterdata-service
+    image: aayushgup10/masterdata-service:latest
+    ports:
+      - "8091:8091"
+    links:
+      - service-discovery:service-discovery
+    environment:
+      - EUREKA_URI=http://service-discovery:8761/eureka
+      - jaegar=jaegar
+      - rabbitmq=rabbitmq
+
+  search-service:
+    container_name: search-service
+    image: aayushgup10/search-service:latest
+    ports:
+      - "8092:8092"
+    links:
+      - service-discovery:service-discovery
+    environment:
+      - EUREKA_URI=http://service-discovery:8761/eureka
+      - jaegar=jaegar
+      - rabbitmq=rabbitmq
+
+  booking-service:
+    container_name: booking-service
+    image: aayushgup10/booking-service:latest
+    ports:
+      - "8093:8093"
+    links:
+      - service-discovery:service-discovery
+    environment:
+      - EUREKA_URI=http://service-discovery:8761/eureka
+      - jaegar=jaegar
+      - rabbitmq=rabbitmq
+
+  notification-service:
+    container_name: notification-service
+    image: aayushgup10/notification-service:latest
+    ports:
+      - "8095:8095"
+    links:
+      - service-discovery:service-discovery
+    environment:
+      - EUREKA_URI=http://service-discovery:8761/eureka
+      - jaegar=jaegar
