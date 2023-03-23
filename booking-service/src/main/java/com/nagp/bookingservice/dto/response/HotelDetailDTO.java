@@ -8,7 +8,7 @@ import java.util.List;
 public class HotelDetailDTO {
     private String hotelName;
     private String city;
-    private Integer numberOfRooms;
+    private Integer numberOfRoomsAvailable;
     private String startingPricePerNight;
     private List<RoomDetailDTO> rooms;
 }

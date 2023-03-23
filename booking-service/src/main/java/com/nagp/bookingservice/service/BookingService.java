@@ -1,16 +1,22 @@
 package com.nagp.bookingservice.service;
 
 import com.nagp.bookingservice.dto.BookingRecord;
+import com.nagp.bookingservice.dto.FlightBook;
+import com.nagp.bookingservice.dto.HotelBook;
 import com.nagp.bookingservice.enums.BookingStatus;
 
 import java.util.List;
 
 public interface BookingService {
-    List<BookingRecord> getBookingDetails();
+    List<FlightBook> getFlightBookingDetails();
 
-    String book(BookingRecord record);
+    String bookFlight(FlightBook record);
 
-    BookingRecord getBooking(Integer id);
+    String bookHotel(HotelBook record);
 
-    void updateStatus(BookingStatus checkedIn, Integer bookingID);
+    List<HotelBook> getHotelBookingDetails();
+    FlightBook getFlightBooking(Integer id);
+    HotelBook getHotelBooking(Integer id);
+
+    //void updateStatus(BookingStatus checkedIn, Integer bookingID);
 }

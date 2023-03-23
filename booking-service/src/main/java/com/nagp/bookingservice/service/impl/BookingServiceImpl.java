@@ -1,13 +1,10 @@
 package com.nagp.bookingservice.service.impl;
 
-import com.nagp.bookingservice.dto.BookingRecord;
-import com.nagp.bookingservice.dto.Customer;
-import com.nagp.bookingservice.dto.Fare;
-import com.nagp.bookingservice.dto.Flight;
+import com.nagp.bookingservice.dto.*;
 import com.nagp.bookingservice.dto.response.FlightDetailDTO;
 import com.nagp.bookingservice.dto.response.HotelDetailDTO;
 import com.nagp.bookingservice.enums.BookingStatus;
-import com.nagp.bookingservice.rabbit.sender.BookingSender;
+import com.nagp.bookingservice.rabbit.sender.BookingEventProducer;
 import com.nagp.bookingservice.service.BookingService;
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClient;
@@ -29,60 +26,106 @@ public class BookingServiceImpl implements BookingService {
     private EurekaClient eurekaClient;
 
     @Autowired
+    BookingEventProducer bookingEventProducer;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Autowired
-    private BookingSender bookingSender;
+    private BookingEventProducer bookingSender;
 
-    private final static List<BookingRecord> bookingRecords = new ArrayList<>();
+    private final static List<FlightBook> flightbookingRecords = new ArrayList<>();
 
     @Override
-    public List<BookingRecord> getBookingDetails() {
-        return bookingRecords;
+    public List<FlightBook> getFlightBookingDetails() {
+        return flightbookingRecords;
     }
 
     @Override
-    public String book(BookingRecord record) {
+    public String bookFlight(FlightBook record) {
         log.info("calling master-data to get flight");
         //check inventory
         FlightDetailDTO inventory = findByFlightNumberAndFlightDate(record.getFlightNumber(), record.getFlightDate());
-        if (inventory.getSeatAvailable() < record.getCustomers().size())
+        if (inventory.getSeatAvailable() < record.getNumberOfPassengers())
             throw new RuntimeException("No more seats available");
 
         log.info("successfully validated inventory" + inventory);
         log.info("calling master-data to update inventory");
         //update inventory
-        inventory.setSeatAvailable(inventory.getSeatAvailable() - record.getCustomers().size());
-
+        inventory.setSeatAvailable(inventory.getSeatAvailable() - record.getNumberOfPassengers());
+        updateFlight(inventory);
         log.info("successfully updated inventory");
         //save booking
+        //need to write code for payment service if done then confirmed
         record.setStatus(BookingStatus.BOOKING_CONFIRMED);
         record.setBookingDate(new Date());
-        Set<Customer> Customers = record.getCustomers();
-        Customers.forEach(Customer -> Customer.setBookingRecord(record));
-        bookingRecords.add(record);
+        //Set<Customer> Customers = record.getCustomers();
+        //Customers.forEach(Customer -> Customer.setBookingRecord(record));
+        flightbookingRecords.add(record);
         log.info("Successfully saved booking");
 
         //send a message to search to update inventory
         log.info("sending a booking event");
-        Map<String, Object> bookingDetails = new HashMap<String, Object>();
-        bookingDetails.put("FLIGHT_NUMBER", record.getFlightNumber());
-        bookingDetails.put("FLIGHT_DATE", record.getFlightDate());
-        bookingDetails.put("NEW_INVENTORY", inventory.getSeatAvailable());
-        bookingSender.send(bookingDetails);
-        log.info("booking event successfully delivered " + bookingDetails);
+        try {
+            sendFlightBookingNotification(record);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+//        Map<String, Object> bookingDetails = new HashMap<String, Object>();
+//        bookingDetails.put("FLIGHT_NUMBER", record.getFlightNumber());
+//        bookingDetails.put("FLIGHT_DATE", record.getFlightDate());
+//        bookingDetails.put("NEW_INVENTORY", inventory.getSeatAvailable());
+//        bookingSender.send(bookingDetails);
+//        log.info("booking event successfully delivered " + bookingDetails);
         return "booking successful";
     }
 
-    @HystrixCommand(fallbackMethod = "getFallbackForMasterdata")
-    private HotelDetailDTO getHotelDetail() {
-        String masterDataHotelUrl = "/master-data-service/hotel/all";
-        InstanceInfo masterDataInstance = eurekaClient.getNextServerFromEureka("master-data-service", false);
-        ResponseEntity<List<HotelDetailDTO>> responseEntity = restTemplate.exchange(masterDataInstance.getHomePageUrl() + masterDataHotelUrl,
-                HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), new ParameterizedTypeReference<List<HotelDetailDTO>>() {
-                });
-        return responseEntity.getBody();
+    private final static List<HotelBook> hotelbookingRecords = new ArrayList<>();
+
+    @Override
+    public List<HotelBook> getHotelBookingDetails() {
+        return hotelbookingRecords;
     }
+
+    @Override
+    public String bookHotel(HotelBook record) {
+        log.info("calling master-data to get flight");
+        //check inventory
+        HotelDetailDTO inventory = findByHotelNameandCity(record.getHotelName(), record.getCity());
+        if (inventory.getNumberOfRoomsAvailable() < record.getNumberOfRooms())
+            throw new RuntimeException("No more rooms available");
+
+        log.info("successfully validated inventory" + inventory);
+        log.info("calling master-data to update inventory");
+        //update inventory
+        inventory.setNumberOfRoomsAvailable(inventory.getNumberOfRoomsAvailable() - record.getNumberOfRooms());
+        updateHotel(inventory);
+        log.info("successfully updated inventory");
+        //save booking
+        //need to write code for payment service if done then confirmed
+        record.setStatus(BookingStatus.BOOKING_CONFIRMED);
+        record.setBookingDate(new Date());
+        //Set<Customer> Customers = record.getCustomers();
+        //Customers.forEach(Customer -> Customer.setBookingRecord(record));
+        hotelbookingRecords.add(record);
+        log.info("Successfully saved booking");
+
+        //send a message to search to update inventory
+        log.info("sending a booking event");
+        try {
+            sendHotelBookingNotification(record);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+//        Map<String, Object> bookingDetails = new HashMap<String, Object>();
+//        bookingDetails.put("FLIGHT_NUMBER", record.getFlightNumber());
+//        bookingDetails.put("FLIGHT_DATE", record.getFlightDate());
+//        bookingDetails.put("NEW_INVENTORY", inventory.getSeatAvailable());
+//        bookingSender.send(bookingDetails);
+//        log.info("booking event successfully delivered " + bookingDetails);
+        return "booking successful";
+    }
+
 
     @HystrixCommand(fallbackMethod = "getFallbackForMasterdata")
     private FlightDetailDTO findByFlightNumberAndFlightDate(String flightNumber, String flightDate) {
@@ -94,14 +137,60 @@ public class BookingServiceImpl implements BookingService {
         return responseEntity.getBody();
     }
 
-    @Override
-    public BookingRecord getBooking(Integer id) {
-        return bookingRecords.get(id);
+    @HystrixCommand(fallbackMethod = "getFallbackForMasterdata")
+    private HotelDetailDTO findByHotelNameandCity(String hotelName, String city) {
+        String masterDataHotelUrl = "/master-data-service/hotel?hotelName=" + hotelName + "&city=" + city;
+        InstanceInfo masterDataInstance = eurekaClient.getNextServerFromEureka("master-data-service", false);
+        ResponseEntity<HotelDetailDTO> responseEntity = restTemplate.exchange(masterDataInstance.getHomePageUrl() + masterDataHotelUrl,
+                HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), new ParameterizedTypeReference<HotelDetailDTO>() {
+                });
+        return responseEntity.getBody();
+    }
+
+    @HystrixCommand(fallbackMethod = "getFallbackForMasterdata")
+    private String updateFlight(FlightDetailDTO flightDetails) {
+        String masterDataFlightUrl = "/master-data-service/update-flight";
+        InstanceInfo masterDataInstance = eurekaClient.getNextServerFromEureka("master-data-service", false);
+        HttpEntity<FlightDetailDTO> entity = new HttpEntity<>(flightDetails);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(masterDataInstance.getHomePageUrl() + masterDataFlightUrl,
+                HttpMethod.PUT, entity, new ParameterizedTypeReference<String>() {
+                });
+        return responseEntity.getBody();
+    }
+
+    private String updateHotel(HotelDetailDTO hotelDetails) {
+        String masterDataHotelUrl = "/master-data-service/update-hotel";
+        InstanceInfo masterDataInstance = eurekaClient.getNextServerFromEureka("master-data-service", false);
+        HttpEntity<HotelDetailDTO> entity = new HttpEntity<>(hotelDetails);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(masterDataInstance.getHomePageUrl() + masterDataHotelUrl,
+                HttpMethod.PUT, entity, new ParameterizedTypeReference<String>() {
+                });
+        return responseEntity.getBody();
+    }
+
+    private void sendHotelBookingNotification(HotelBook hotelDetails) throws Exception {
+        bookingEventProducer.produceHotelBookingEvent(hotelDetails);
+
+    }
+
+    private void sendFlightBookingNotification(FlightBook flightDetails) throws Exception {
+        bookingEventProducer.produceFLightBookingEvent(flightDetails);
+
     }
 
     @Override
-    public void updateStatus(BookingStatus status, Integer bookingId) {
-        BookingRecord record = bookingRecords.get(bookingId);
-        record.setStatus(status);
+    public FlightBook getFlightBooking(Integer id) {
+        return flightbookingRecords.get(id);
     }
+
+    @Override
+    public HotelBook getHotelBooking(Integer id) {
+        return hotelbookingRecords.get(id);
+    }
+
+//    @Override
+//    public void updateStatus(BookingStatus status, Integer bookingId) {
+//        BookingRecord record = bookingRecords.get(bookingId);
+//        record.setStatus(status);
+//    }
 }
