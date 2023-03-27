@@ -15,7 +15,7 @@ public class FlightBook {
     private String destination;
     private String flightDate;
     private Date bookingDate;
-    private String fare;
+    private Float fare;
     private BookingStatus status;
 
     private Integer numberOfPassengers;

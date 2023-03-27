@@ -12,7 +12,7 @@ public class HotelBook {
     private String hotelName;
     private String city;
     private Integer numberOfRooms;
-    private Integer price;
+    private Float price;
     private BookingStatus status;
     private Date bookingDate;
 

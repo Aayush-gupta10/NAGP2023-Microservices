@@ -10,9 +10,9 @@ import java.util.List;
 public interface BookingService {
     List<FlightBook> getFlightBookingDetails();
 
-    String bookFlight(FlightBook record);
+    String bookFlight(FlightBook record, Integer userid);
 
-    String bookHotel(HotelBook record);
+    String bookHotel(HotelBook record, Integer userid);
 
     List<HotelBook> getHotelBookingDetails();
     FlightBook getFlightBooking(Integer id);

@@ -1,8 +1,6 @@
-package com.nagp.usermanager.domain.models;
+package com.nagp.notificationservice.dto;
 
 import lombok.Data;
-
-import java.util.List;
 
 @Data
 public class Customer {

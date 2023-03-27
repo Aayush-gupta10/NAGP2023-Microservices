@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,7 +56,7 @@ public class SearchServiceImpl implements SearchService {
         return filteredHotelDetailDTOList;
     }
 
-    @HystrixCommand(fallbackMethod = "getFallbackForMasterdata")
+    @HystrixCommand(fallbackMethod = "getFallbackForFlightMasterdata")
     private List<FlightDetailDTO> getFlightDetail() {
         String masterDataFlightUrl = "/master-data-service/flight/all";
         InstanceInfo masterDataInstance = eurekaClient.getNextServerFromEureka("master-data-service", false);
@@ -73,8 +74,9 @@ public class SearchServiceImpl implements SearchService {
         return responseEntity.getBody();
     }
 
-    private String getFallbackForMasterdata() {
+    private List<FlightDetailDTO> getFallbackForFlightMasterdata() {
         System.out.println("Master-data Service is down!!! fallback route enabled...");
-        return "CIRCUIT BREAKER ENABLED!!!No Response From Master-data Service at this moment. Service will be back shortly - " + new Date();
+        log.info("CIRCUIT BREAKER ENABLED!!!No Response From Master-data Service at this moment. Service will be back shortly - " + new Date());
+        return new ArrayList<>();
     }
 }

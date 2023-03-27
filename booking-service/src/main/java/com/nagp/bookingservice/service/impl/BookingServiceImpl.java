@@ -42,7 +42,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public String bookFlight(FlightBook record) {
+    public String bookFlight(FlightBook record, Integer userid) {
         log.info("calling master-data to get flight");
         //check inventory
         FlightDetailDTO inventory = findByFlightNumberAndFlightDate(record.getFlightNumber(), record.getFlightDate());
@@ -51,34 +51,50 @@ public class BookingServiceImpl implements BookingService {
 
         log.info("successfully validated inventory" + inventory);
         log.info("calling master-data to update inventory");
-        //update inventory
+
         inventory.setSeatAvailable(inventory.getSeatAvailable() - record.getNumberOfPassengers());
         log.info("inventory{}",inventory);
         updateFlight(inventory);
         log.info("successfully updated inventory");
-        //save booking
-        //need to write code for payment service if done then confirmed
-        record.setStatus(BookingStatus.BOOKING_CONFIRMED);
-        record.setBookingDate(new Date());
-        //Set<Customer> Customers = record.getCustomers();
-        //Customers.forEach(Customer -> Customer.setBookingRecord(record));
-        flightbookingRecords.add(record);
-        log.info("Successfully saved booking");
 
-        //send a message to search to update inventory
-        log.info("sending a booking event");
-        try {
-            sendFlightBookingNotification(record);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        record.setStatus(BookingStatus.BOOKING_INITIATED);
+
+        boolean payment = flightPaymentSatus(record);
+        if(!payment)
+        {
+            record.setStatus(BookingStatus.BOOKING_REJECTED);
+            inventory.setSeatAvailable(inventory.getSeatAvailable() + record.getNumberOfPassengers());
+            log.info("inventory{}",inventory);
+            updateFlight(inventory);
+            log.info("Booking got canceled due to payment failure");
+            record.setBookedBy(userid);
+            log.info("sending a booking failure event");
+            try {
+                sendFlightBookingNotification(record);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            return "Booking got canceled due to payment failure, refund initiated";
         }
-//        Map<String, Object> bookingDetails = new HashMap<String, Object>();
-//        bookingDetails.put("FLIGHT_NUMBER", record.getFlightNumber());
-//        bookingDetails.put("FLIGHT_DATE", record.getFlightDate());
-//        bookingDetails.put("NEW_INVENTORY", inventory.getSeatAvailable());
-//        bookingSender.send(bookingDetails);
-//        log.info("booking event successfully delivered " + bookingDetails);
-        return "booking successful";
+        else{
+            record.setStatus(BookingStatus.BOOKING_CONFIRMED);
+            record.setBookingDate(new Date());
+            record.setBookedBy(userid);
+
+            flightbookingRecords.add(record);
+            log.info("Successfully saved booking");
+
+            //send a message to search to update inventory
+            log.info("sending a booking event");
+            try {
+                sendFlightBookingNotification(record);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            return "booking successful";
+        }
     }
 
     private final static List<HotelBook> hotelbookingRecords = new ArrayList<>();
@@ -89,43 +105,59 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public String bookHotel(HotelBook record) {
-        log.info("calling master-data to get flight");
-        //check inventory
+    public String bookHotel(HotelBook record, Integer userid) {
+        log.info("calling master-data to get hotel");
+
         HotelDetailDTO inventory = findByHotelNameandCity(record.getHotelName(), record.getCity());
         if (inventory.getNumberOfRoomsAvailable() < record.getNumberOfRooms())
             throw new RuntimeException("No more rooms available");
 
         log.info("successfully validated inventory" + inventory);
-        log.info("calling master-data to update inventory");
-        //update inventory
+        log.info("calling master-data to update hotel inventory");
+
         inventory.setNumberOfRoomsAvailable(inventory.getNumberOfRoomsAvailable() - record.getNumberOfRooms());
         log.info("inventory{}",inventory);
         updateHotel(inventory);
-        log.info("successfully updated inventory");
-        //save booking
-        //need to write code for payment service if done then confirmed
-        record.setStatus(BookingStatus.BOOKING_CONFIRMED);
-        record.setBookingDate(new Date());
-        //Set<Customer> Customers = record.getCustomers();
-        //Customers.forEach(Customer -> Customer.setBookingRecord(record));
-        hotelbookingRecords.add(record);
-        log.info("Successfully saved booking");
+        log.info("successfully updated hotel inventory");
+        record.setStatus(BookingStatus.BOOKING_INITIATED);
 
-        //send a message to search to update inventory
-        log.info("sending a booking event");
-        try {
-            sendHotelBookingNotification(record);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        boolean payment = hotelPaymentSatus(record);
+        if(!payment)
+        {
+            record.setStatus(BookingStatus.BOOKING_REJECTED);
+            inventory.setNumberOfRoomsAvailable(inventory.getNumberOfRoomsAvailable() + record.getNumberOfRooms());
+            log.info("inventory{}",inventory);
+            updateHotel(inventory);
+            log.info("successfully updated hotel inventory");
+            log.info("Booking got canceled due to payment failure");
+            record.setBookedBy(userid);
+            log.info("sending a booking failure event");
+            try {
+                sendHotelBookingNotification(record);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            return "Booking got canceled due to payment failure, refund initiated";
         }
-//        Map<String, Object> bookingDetails = new HashMap<String, Object>();
-//        bookingDetails.put("FLIGHT_NUMBER", record.getFlightNumber());
-//        bookingDetails.put("FLIGHT_DATE", record.getFlightDate());
-//        bookingDetails.put("NEW_INVENTORY", inventory.getSeatAvailable());
-//        bookingSender.send(bookingDetails);
-//        log.info("booking event successfully delivered " + bookingDetails);
-        return "booking successful";
+        else{
+            record.setStatus(BookingStatus.BOOKING_CONFIRMED);
+            record.setBookingDate(new Date());
+            record.setBookedBy(userid);
+
+            hotelbookingRecords.add(record);
+            log.info("Successfully saved booking");
+
+            //send a message to search to update inventory
+            log.info("sending a booking event");
+            try {
+                sendHotelBookingNotification(record);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            return "booking successful";
+        }
     }
 
 
@@ -180,6 +212,35 @@ public class BookingServiceImpl implements BookingService {
 
     }
 
+    private Boolean flightPaymentSatus(FlightBook flightDetails)
+    {
+        Payment payment = new Payment();
+        payment.setBookingId(flightDetails.getId());
+        payment.setPaymentCost(flightDetails.getFare());
+        payment.setPaymentId(12);
+        payment.setPaymentStatus(PaymentStatus.Initiated);
+        HttpEntity<Payment> httpEntity =new HttpEntity<>(payment);
+        String paymentUrl = "/payment-service/payment";
+        InstanceInfo paymentInstance = eurekaClient.getNextServerFromEureka("payment-service", false);
+        ResponseEntity<Boolean> responseEntity = restTemplate.exchange(paymentInstance.getHomePageUrl() + paymentUrl,
+                HttpMethod.POST, httpEntity, new ParameterizedTypeReference<Boolean>() {});
+        return responseEntity.getBody();
+    }
+
+    private Boolean hotelPaymentSatus(HotelBook hotelDetails)
+    {
+        Payment payment = new Payment();
+        payment.setBookingId(hotelDetails.getId());
+        payment.setPaymentCost(hotelDetails.getPrice());
+        payment.setPaymentId(12);
+        payment.setPaymentStatus(PaymentStatus.Initiated);
+        HttpEntity<Payment> httpEntity =new HttpEntity<>(payment);
+        String paymentUrl = "/payment-service/payment";
+        InstanceInfo paymentInstance = eurekaClient.getNextServerFromEureka("payment-service", false);
+        ResponseEntity<Boolean> responseEntity = restTemplate.exchange(paymentInstance.getHomePageUrl() + paymentUrl,
+                HttpMethod.POST, httpEntity, new ParameterizedTypeReference<Boolean>() {});
+        return responseEntity.getBody();
+    }
     @Override
     public FlightBook getFlightBooking(Integer id) {
         return flightbookingRecords.get(id);

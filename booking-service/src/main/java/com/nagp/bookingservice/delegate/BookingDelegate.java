@@ -18,12 +18,12 @@ public class BookingDelegate {
 //        return bookingService.getBookingDetails();
 //    }
 
-    public String bookFlight(FlightBook record) {
-        return bookingService.bookFlight(record);
+    public String bookFlight(FlightBook record,Integer userid) {
+        return bookingService.bookFlight(record,userid);
     }
 
-    public String bookHotel(HotelBook record) {
-        return bookingService.bookHotel(record);
+    public String bookHotel(HotelBook record,Integer userid) {
+        return bookingService.bookHotel(record,userid);
     }
 
     public FlightBook getFlightBooking(Integer id) {
